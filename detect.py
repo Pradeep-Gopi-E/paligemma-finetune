@@ -1,60 +1,80 @@
 import os
-
-# --- Disable all compiling paths BEFORE importing torch ---
-os.environ["TORCH_COMPILE_DISABLE"] = "1"     # disable torch.compile
-os.environ["TORCHDYNAMO_DISABLE"] = "1"       # disable TorchDynamo entirely
-os.environ["PYTORCH_SDP_KERNEL"] = "math"     # force math attention (no Triton/Flash)
-# Optional: quieter logs
-os.environ.pop("TORCH_LOGS", None)
-os.environ["TORCHDYNAMO_VERBOSE"] = "0"
-
 import torch
-# Fallback to eager if anything tries to compile anyway
-torch._dynamo.config.suppress_errors = True
-
 from transformers import AutoProcessor, PaliGemmaForConditionalGeneration
 from PIL import Image
 
-# ------------------ Config ------------------
-model_id = "google/paligemma2-3b-ft-docci-448"
-image_folder = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\temp"
-prompt = "detect circle"
-device = "cuda" if torch.cuda.is_available() else "cpu"
-dtype = torch.float16 if device == "cuda" else torch.float32  # fp16 on GPU helps and avoids some kernels
-# --------------------------------------------
+def detect_with_paligemma(
+    model_id,
+    image_folder,
+    prompt="detect circle",
+    device=None,
+    dtype=None,
+    max_new_tokens=200
+):
+    """
+    Runs PaliGemma model on all images in a folder and returns predictions.
 
-# Load model/processor
-model = PaliGemmaForConditionalGeneration.from_pretrained(model_id, torch_dtype=dtype).to(device)
-model.eval()
-processor = AutoProcessor.from_pretrained(model_id)
+    Args:
+        model_id (str): HuggingFace model ID for PaliGemma.
+        image_folder (str): Path to the folder containing images.
+        prompt (str): Text prompt for the model (default: "detect circle").
+        device (str): "cuda" or "cpu" (auto-detect if None).
+        dtype (torch.dtype): Data type for inference (auto-detect if None).
+        max_new_tokens (int): Maximum tokens for generation.
 
+    Returns:
+        list[dict]: Each dict has {'file': filename, 'prediction': text}.
+    """
 
+    # ---- Environment Tweaks for Safety ----
+    os.environ["TORCH_COMPILE_DISABLE"] = "1"
+    os.environ["TORCHDYNAMO_DISABLE"] = "1"
+    os.environ["PYTORCH_SDP_KERNEL"] = "math"
+    os.environ.pop("TORCH_LOGS", None)
+    os.environ["TORCHDYNAMO_VERBOSE"] = "0"
 
-# Helper: safe open/convert
-def load_rgb(path):
-    img = Image.open(path)
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-    return img
+    # ---- Device and dtype ----
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if dtype is None:
+        dtype = torch.float16 if device == "cuda" else torch.float32
 
-# Process folder one-by-one (no batching = fewer surprises)
-valid_ext = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
-files = [f for f in os.listdir(image_folder) if f.lower().endswith(valid_ext)]
-files.sort()
+    # ---- Load Model & Processor ----
+    model = PaliGemmaForConditionalGeneration.from_pretrained(model_id, torch_dtype=dtype).to(device)
+    model.eval()
+    processor = AutoProcessor.from_pretrained(model_id)
 
-with torch.no_grad():
-    for fn in files:
-        p = os.path.join(image_folder, fn)
-        try:
-            img = load_rgb(p)
-            # Processor already handles resizing to model’s expected size (448), so no manual resize needed
-            inputs = processor(text=prompt, images=[img], return_tensors="pt").to(device, dtype=dtype)
+    # ---- Helper: Open image safely ----
+    def load_rgb(path):
+        img = Image.open(path)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        return img
 
-            output = model.generate(**inputs, max_new_tokens=200)
-            input_len = inputs["input_ids"].shape[-1]
-            text = processor.decode(output[0][input_len:], skip_special_tokens=True)
-            print(f"{fn} -> {text}")
+    # ---- Collect files ----
+    valid_ext = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+    files = [f for f in os.listdir(image_folder) if f.lower().endswith(valid_ext)]
+    files.sort()
 
-        except Exception as e:
-            # Don’t crash the whole loop; show which file caused trouble
-            print(f"[ERROR] {fn}: {e}")
+    results = []
+
+    # ---- Process images ----
+    with torch.no_grad():
+        for fn in files:
+            p = os.path.join(image_folder, fn)
+            try:
+                img = load_rgb(p)
+                inputs = processor(text=prompt, images=[img], return_tensors="pt").to(device, dtype=dtype)
+
+                output = model.generate(**inputs, max_new_tokens=max_new_tokens)
+                input_len = inputs["input_ids"].shape[-1]
+                text = processor.decode(output[0][input_len:], skip_special_tokens=True)
+
+                results.append({"file": fn, "prediction": text})
+                print(f"{fn} -> {text}")
+
+            except Exception as e:
+                print(f"[ERROR] {fn}: {e}")
+                results.append({"file": fn, "error": str(e)})
+
+    return results
