@@ -5,7 +5,7 @@ from utils import parse_bbox_and_labels, draw_boxes
 def test_paligemma_on_folder():
     model_id = "google/paligemma2-3b-ft-docci-448"
     image_folder = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\temp"
-    prompt = "detect circle"
+    prompt = "detect circle ; triangle"
 
     results = detect_with_paligemma(model_id, image_folder, prompt)
 
