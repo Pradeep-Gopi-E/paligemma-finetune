@@ -1,0 +1,9 @@
+DATASET_ROOT = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\Synth-RT-DETR-DATASET"
+DATA_YAML = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\Synth-RT-DETR-DATASET\data.yml"
+OUTPUT_ROOT = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\Paligemma_dataset"
+IMAGE_FORMATS = [".jpg", ".jpeg", ".png"]
+SPLITS = ["train", "valid", "test"]
+OCCLUSION_TYPES = ["no_occlusion", "partial_occlusion"]
+CONTRAST_TYPES = ["low_contrast", "medium_contrast"]
+PUSH_TO_HUB = True
+HUB_REPO_PREFIX = "godeep"

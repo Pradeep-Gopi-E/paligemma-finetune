@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 from detect import detect_with_paligemma
-from utils import parse_bbox_and_labels, convert_corners_to_center, compute_iou, scale_normalized_boxes, draw_boxes_on_image, read_yolo_label_file
+from utils import parse_bbox_and_labels, compute_iou, scale_normalized_boxes, draw_boxes_on_image, read_yolo_label_file
 from collections import defaultdict
 
 def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=False):
