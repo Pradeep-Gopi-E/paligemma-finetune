@@ -47,7 +47,7 @@ def read_yolo_label_file(file_path):
     """
     boxes = []
     labels = []
-    class_map = {0: "triangle", 1: "circle"}  # Adjust according to your dataset
+    class_map = {0: "circle", 1: "triangle"}  # Adjust according to your dataset
     with open(file_path, 'r') as f:
         for line in f.readlines():
             if line.strip() == "":

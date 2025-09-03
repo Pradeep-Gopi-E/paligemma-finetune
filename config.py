@@ -8,4 +8,4 @@ EPOCHS = 1
 LEARNING_RATE = 5e-5
 MODEL_DTYPE = torch.bfloat16
 MODEL_REVISION = "bfloat16"
-PROMPT = "detect circle ; triangle"
+PROMPT = "detect circle; triangle"

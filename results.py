@@ -110,9 +110,9 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
 
 # ----------------- Run Test -----------------
 if __name__ == "__main__":
-    IMAGE_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\temp"
-    LABEL_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\temp\label"
-    MODEL_ID = "google/paligemma2-3b-ft-docci-448"
+    IMAGE_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\images"
+    LABEL_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\labels"
+    MODEL_ID = "google/paligemma-3b-pt-224"
     IOU_THRESHOLD = 0.5
 
     results = evaluate_map(
@@ -120,5 +120,5 @@ if __name__ == "__main__":
         label_dir=LABEL_DIR,
         model_id=MODEL_ID,
         iou_threshold=IOU_THRESHOLD,
-        visualize=False  # Set True to see images
+        visualize=True  # Set True to see images
     )

@@ -60,27 +60,17 @@ def draw_bbox(image, objects):
         )
         ax.add_patch(rect)
         plt.text(
-            bbox[0], bbox[1] - 10, "plate", color="red", fontsize=12, weight="bold"
+            bbox[0], bbox[1] - 10, color="red", fontsize=12, weight="bold"
         )
-    plt.show()
+    plt.savefig(f"debug_bbox_before.png")  # or dynamic file nameplt.close()
+
 
 
 def infer_on_model(model, test_batch, before_pt=True):
-    # hardcoding the index to get same before and after results
-    index = 0
-
-    # help from : https://discuss.huggingface.co/t/vitimageprocessor-output-visualization/76335/6
     mean = processor.image_processor.image_mean
     std = processor.image_processor.image_std
 
-    pixel_value = test_batch["pixel_values"][index].cpu().to(torch.float32)
-
-    unnormalized_image = (
-        pixel_value.numpy() * np.array(std)[:, None, None]
-    ) + np.array(mean)[:, None, None]
-    unnormalized_image = (unnormalized_image * 255).astype(np.uint8)
-    unnormalized_image = np.moveaxis(unnormalized_image, 0, -1)
-
+    batch_size = len(test_batch["pixel_values"])
     with torch.inference_mode():
         generated_outputs = model.generate(
             **test_batch, max_new_tokens=100, do_sample=False
@@ -89,21 +79,39 @@ def infer_on_model(model, test_batch, before_pt=True):
             generated_outputs, skip_special_tokens=True
         )
 
-    if before_pt:
-        # generation of the pre trained model
-        for element in generated_outputs:
-            location = element.split("\n")[1]
-            if location == "":
-                print("No bbox found")
-            else:
-                print(location)
-    else:
-        # generation of the fine tuned model
+    for index in range(batch_size):
+        pixel_value = test_batch["pixel_values"][index].cpu().to(torch.float32)
+        unnormalized_image = (pixel_value.numpy() * np.array(std)[:, None, None]) + np.array(mean)[:, None, None]
+        unnormalized_image = (unnormalized_image * 255).astype(np.uint8)
+        unnormalized_image = np.moveaxis(unnormalized_image, 0, -1)
+
         element = generated_outputs[index]
         detection_string = element.split("\n")[1]
-        objects = extract_objects(detection_string, 224, 224, unique_labels=False)
-        draw_bbox(unnormalized_image, objects)
 
+        if before_pt:
+            if detection_string == "":
+                print(f"Image {index}: No bbox found")
+            else:
+                print(f"Image {index}: {detection_string}")
+        else:
+            objects = extract_objects(detection_string, 224, 224, unique_labels=False)
+            plt.figure()
+            plt.imshow(unnormalized_image)
+            for obj in objects:
+                bbox = obj["xyxy"]
+                plt.gca().add_patch(
+                    patches.Rectangle(
+                        (bbox[0], bbox[1]),
+                        bbox[2] - bbox[0],
+                        bbox[3] - bbox[1],
+                        linewidth=2,
+                        edgecolor="r",
+                        facecolor="none"
+                    )
+                )
+                plt.text(bbox[0], bbox[1]-10, obj["name"], color="red", fontsize=12, weight="bold")
+            plt.savefig(f"debug_bbox_image_{index}.png")
+            plt.close()
 
 if __name__ == "__main__":
     # get the device
@@ -183,6 +191,21 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+    print("[INFO] fine tuning complete!")
+    # Save the fine-tuned model locally
+    save_path = "./paligemma-finetuned"
+    model.save_pretrained(save_path)
+    processor.save_pretrained(save_path)
+    print(f"[INFO] Model saved locally at {save_path}")
+
 
     # run model generation after fine tuning
     infer_on_model(model, test_batch, before_pt=False)
+    
+    push = input("Do you want to push the model to Hugging Face Hub? (yes/no): ").strip().lower()
+if push == "yes":
+    model.push_to_hub("paligemma-finetuned")
+    processor.push_to_hub("paligemma-finetuned")
+    print("[INFO] Model pushed to Hugging Face Hub!")
+else:
+    print("[INFO] Model not pushed to hub.")
