@@ -9,6 +9,12 @@ import config as object_detection_config
 from ft_utils import collate_fn, freeze_layers
 from functools import partial
 from matplotlib import pyplot as plt, patches
+import os
+os.environ["TORCH_COMPILE_DISABLE"] = "1"
+os.environ["TORCHDYNAMO_DISABLE"] = "1"
+os.environ["PYTORCH_SDP_KERNEL"] = "math"
+os.environ.pop("TORCH_LOGS", None)
+os.environ["TORCHDYNAMO_VERBOSE"] = "0"
 
 DETECT_RE = re.compile(
     r"(.*?)" + r"((?:<loc\d{4}>){4})\s*" + r"([^;<>]+) ?(?:; )?",
@@ -69,6 +75,7 @@ def draw_bbox(image, objects):
 def infer_on_model(model, test_batch, before_pt=True):
     mean = processor.image_processor.image_mean
     std = processor.image_processor.image_std
+    
 
     batch_size = len(test_batch["pixel_values"])
     with torch.inference_mode():
@@ -94,7 +101,7 @@ def infer_on_model(model, test_batch, before_pt=True):
             else:
                 print(f"Image {index}: {detection_string}")
         else:
-            objects = extract_objects(detection_string, 224, 224, unique_labels=False)
+            objects = extract_objects(detection_string, 448, 448, unique_labels=False)
             plt.figure()
             plt.imshow(unnormalized_image)
             for obj in objects:
@@ -204,8 +211,8 @@ if __name__ == "__main__":
     
     push = input("Do you want to push the model to Hugging Face Hub? (yes/no): ").strip().lower()
 if push == "yes":
-    model.push_to_hub("paligemma-finetuned")
-    processor.push_to_hub("paligemma-finetuned")
+    model.push_to_hub("paligemma2-finetuned_448")
+    processor.push_to_hub("paligemma2-finetuned_448")
     print("[INFO] Model pushed to Hugging Face Hub!")
 else:
     print("[INFO] Model not pushed to hub.")
