@@ -1,76 +1,23 @@
 import re
 import numpy as np
 import torch
+import configs.config as object_detection_config
+import os
+
 from torch.utils.data import DataLoader
 from transformers import AutoProcessor, PaliGemmaForConditionalGeneration
 from datasets import load_dataset
-import config as object_detection_config
 
-from ft_utils import collate_fn, freeze_layers
+from utils.ft_utils import collate_fn, freeze_layers, extract_objects
 from functools import partial
 from matplotlib import pyplot as plt, patches
-import os
-os.environ["TORCH_COMPILE_DISABLE"] = "1"
-os.environ["TORCHDYNAMO_DISABLE"] = "1"
-os.environ["PYTORCH_SDP_KERNEL"] = "math"
-os.environ.pop("TORCH_LOGS", None)
-os.environ["TORCHDYNAMO_VERBOSE"] = "0"
 
-DETECT_RE = re.compile(
-    r"(.*?)" + r"((?:<loc\d{4}>){4})\s*" + r"([^;<>]+) ?(?:; )?",
-)
-
-
-def extract_objects(detection_string, image_width, image_height, unique_labels=False):
-    objects = []
-    seen_labels = set()
-
-    while detection_string:
-        match = DETECT_RE.match(detection_string)
-        if not match:
-            break
-
-        prefix, locations, label = match.groups()
-        location_values = [int(loc) for loc in re.findall(r"\d{4}", locations)]
-        y1, x1, y2, x2 = [value / 1024 for value in location_values]
-        y1, x1, y2, x2 = map(
-            round,
-            (y1 * image_height, x1 * image_width, y2 * image_height, x2 * image_width),
-        )
-
-        label = label.strip()  # Remove trailing spaces from label
-
-        if unique_labels and label in seen_labels:
-            label = (label or "") + "'"
-        seen_labels.add(label)
-
-        objects.append(dict(xyxy=(x1, y1, x2, y2), name=label))
-
-        detection_string = detection_string[len(match.group()) :]
-
-    return objects
-
-
-def draw_bbox(image, objects):
-    fig, ax = plt.subplots(1)
-    ax.imshow(image)
-    for obj in objects:
-        bbox = obj["xyxy"]
-        rect = patches.Rectangle(
-            (bbox[0], bbox[1]),
-            bbox[2] - bbox[0],
-            bbox[3] - bbox[1],
-            linewidth=2,
-            edgecolor="r",
-            facecolor="none",
-        )
-        ax.add_patch(rect)
-        plt.text(
-            bbox[0], bbox[1] - 10, color="red", fontsize=12, weight="bold"
-        )
-    plt.savefig(f"debug_bbox_before.png")  # or dynamic file nameplt.close()
-
-
+# ---- Disable Torch Inductor ----
+# os.environ["TORCH_COMPILE_DISABLE"] = "1"
+# os.environ["TORCHDYNAMO_DISABLE"] = "1"
+# os.environ["PYTORCH_SDP_KERNEL"] = "math"
+# os.environ.pop("TORCH_LOGS", None)
+# os.environ["TORCHDYNAMO_VERBOSE"] = "0"
 
 def infer_on_model(model, test_batch, before_pt=True):
     mean = processor.image_processor.image_mean

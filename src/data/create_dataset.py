@@ -1,25 +1,21 @@
 import os
 from PIL import Image
-from datasets import Dataset, DatasetDict, Image as ImageFeature  # Renamed the import
-from tqdm import tqdm
 import yaml
-from dataset_config import (
+from datasets import Dataset, DatasetDict, Image as ImageFeature  
+from tqdm import tqdm
+from configs.dataset_config import (
     DATASET_ROOT, DATA_YAML, OUTPUT_ROOT, IMAGE_FORMATS,
     SPLITS, OCCLUSION_TYPES, CONTRAST_TYPES,
     PUSH_TO_HUB, HUB_REPO_PREFIX
 )
 
-# --------------------------
-# LOAD CLASS NAMES FROM YOLO DATA.YAML
-# --------------------------
+
 with open(DATA_YAML, "r") as f:
     data_cfg = yaml.safe_load(f)
 
-class_names = data_cfg["names"]  # dict: {0: 'plate', 1: 'car', ...}
+class_names = data_cfg["names"]  
 
-# --------------------------
-# HELPERS
-# --------------------------
+
 def yolo_to_xyxy(box, img_width, img_height):
     x_center, y_center, w, h = box
     x_center *= img_width
@@ -90,9 +86,7 @@ def parse_split(split_path):
                     })
     return data
 
-# --------------------------
-# MAIN LOGIC
-# --------------------------
+
 for occ in OCCLUSION_TYPES:
     for contrast in CONTRAST_TYPES:
         print(f"\n[INFO] Processing: {occ} -> {contrast}")
@@ -123,5 +117,6 @@ for occ in OCCLUSION_TYPES:
                 repo_name = f"{HUB_REPO_PREFIX}/{occ}-{contrast}-paligemma"
                 print(f"[INFO] Pushing to Hub: {repo_name}")
                 dataset.push_to_hub(repo_name)
+                print(f"[INFO] Pushed to Hub: {repo_name}")
 
 print("\n[INFO] All processing completed!")

@@ -1,8 +1,8 @@
 import os
 import cv2
 import numpy as np
-from detect import detect_with_paligemma
-from utils import parse_bbox_and_labels, compute_iou, scale_normalized_boxes, draw_boxes_on_image, read_yolo_label_file
+from src.inference.detect import detect_with_paligemma
+from utils.utils import parse_bbox_and_labels, compute_iou, scale_normalized_boxes, draw_boxes_on_image, read_yolo_label_file
 from collections import defaultdict
 
 def compute_ap(precisions, recalls):
@@ -24,7 +24,6 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
     raw_predictions = detect_with_paligemma(model_id, image_dir, prompt)
     prediction_outputs = {}
 
-    # Organize predictions
     for entry in raw_predictions:
         if "file" in entry and "prediction" in entry:
             prediction_outputs[entry["file"]] = entry["prediction"]
@@ -40,7 +39,6 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
     class_fp = defaultdict(list)
     class_fn = defaultdict(int)
 
-    # Loop over each image
     for img_name, prediction_output in prediction_outputs.items():
         img_path = os.path.join(image_dir, img_name)
         if not os.path.exists(img_path):
@@ -50,11 +48,9 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
         img = cv2.imread(img_path)
         height, width = img.shape[:2]
 
-        # Parse predictions
         pred_boxes_norm, pred_labels = parse_bbox_and_labels(prediction_output)
         pred_boxes_pixels = scale_normalized_boxes(pred_boxes_norm, width, height)
 
-        # Load ground-truth boxes
         base_name = os.path.splitext(img_name)[0]
         label_file = os.path.join(label_dir, base_name + ".txt")
         if not os.path.exists(label_file):
@@ -67,7 +63,6 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
         matched_gt = set()
         true_pos = false_pos = 0
 
-        # Match predictions with ground-truth boxes
         for i, pred_box in enumerate(pred_boxes_pixels):
             best_iou = 0
             best_gt_idx = -1
@@ -90,7 +85,6 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
 
             img_ious.append(best_iou)
 
-        # Count false negatives (missed GT boxes)
         for j, gt_class in enumerate(gt_labels):
             if j not in matched_gt:
                 class_fn[gt_class] += 1
@@ -101,20 +95,17 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
         all_fp += false_pos
         all_fn += false_neg
 
-        # Visualization (optional)
         if visualize:
             draw_boxes_on_image(img, gt_boxes_pixels, gt_labels, color=(0, 255, 0))  # GT = green
             draw_boxes_on_image(img, pred_boxes_pixels, pred_labels, color=(0, 0, 255))  # Pred = red
             cv2.imshow("Comparison", img)
             cv2.waitKey(0)
 
-    # Overall metrics
     mean_iou = np.mean(iou_scores) if iou_scores else 0.0
     precision = all_tp / (all_tp + all_fp + 1e-6)
     recall = all_tp / (all_tp + all_fn + 1e-6)
     f1 = 2 * (precision * recall) / (precision + recall + 1e-6)
 
-    # Compute AP per class and mAP
     ap_per_class = {}
     for cls in class_tp.keys():
         precisions = []
@@ -131,7 +122,6 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
 
     mAP = np.mean(list(ap_per_class.values())) if ap_per_class else 0.0
 
-    # Print results
     print("\n==== Overall Results ====")
     print(f"Mean IoU: {mean_iou:.4f}")
     print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}, mAP@0.5: {mAP:.4f}")

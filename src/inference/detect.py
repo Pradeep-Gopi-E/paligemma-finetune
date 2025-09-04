@@ -33,32 +33,29 @@ def detect_with_paligemma(
     os.environ.pop("TORCH_LOGS", None)
     os.environ["TORCHDYNAMO_VERBOSE"] = "0"
 
-    # ---- Device and dtype ----
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     if dtype is None:
         dtype = torch.float16 if device == "cuda" else torch.float32
 
-    # ---- Load Model & Processor ----
+   
     model = PaliGemmaForConditionalGeneration.from_pretrained(model_id, torch_dtype=dtype).to(device)
     model.eval()
     processor = AutoProcessor.from_pretrained(model_id)
 
-    # ---- Helper: Open image safely ----
+
     def load_rgb(path):
         img = Image.open(path)
         if img.mode != "RGB":
             img = img.convert("RGB")
         return img
 
-    # ---- Collect files ----
     valid_ext = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
     files = [f for f in os.listdir(image_folder) if f.lower().endswith(valid_ext)]
     files.sort()
 
     results = []
 
-    # ---- Process images ----
     with torch.no_grad():
         for fn in files:
             p = os.path.join(image_folder, fn)

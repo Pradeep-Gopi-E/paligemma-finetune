@@ -1,6 +1,6 @@
 import os
-from detect import detect_with_paligemma
-from utils import parse_bbox_and_labels, draw_boxes
+from src.inference.detect import detect_with_paligemma
+from utils.utils import parse_bbox_and_labels, draw_boxes
 
 def test_paligemma_on_folder():
     model_id = "google/paligemma2-3b-ft-docci-448"
