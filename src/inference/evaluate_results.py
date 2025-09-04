@@ -1,13 +1,24 @@
 import os
 import cv2
 import numpy as np
-from src.inference.detect import detect_with_paligemma
-from utils.utils import parse_bbox_and_labels, compute_iou, scale_normalized_boxes, draw_boxes_on_image, read_yolo_label_file
 from collections import defaultdict
+
+from src.inference.detect import detect_with_paligemma
+from utils.utils import (
+    parse_bbox_and_labels,
+    compute_iou,
+    scale_normalized_boxes,
+    draw_boxes_on_image,
+    read_yolo_label_file
+)
+
+from configs.inference_config import IMAGE_DIR, LABEL_DIR, MODEL_ID, IOU_THRESHOLD, PROMPT, VISUALIZE
+
+# ---------------- Metrics Functions ----------------
 
 def compute_ap(precisions, recalls):
     """
-    Compute Average Precision (AP) using 11-point interpolation as in Pascal VOC.
+    Compute Average Precision (AP) using 11-point interpolation (Pascal VOC).
     """
     ap = 0.0
     for t in np.linspace(0, 1, 11):
@@ -16,11 +27,15 @@ def compute_ap(precisions, recalls):
         ap += prec
     return ap / 11
 
-def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=False):
+# ---------------- Evaluation Function ----------------
+
+def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=False, prompt=None):
     """
     Evaluate Mean IoU, Precision, Recall, F1-score, and mAP for Paligemma predictions.
     """
-    prompt = "detect circle ; triangle"
+    if prompt is None:
+        prompt = "detect circle ; triangle"  # fallback default
+
     raw_predictions = detect_with_paligemma(model_id, image_dir, prompt)
     prediction_outputs = {}
 
@@ -139,17 +154,14 @@ def evaluate_map(image_dir, label_dir, model_id, iou_threshold=0.5, visualize=Fa
         "AP_per_class": ap_per_class
     }
 
-# ----------------- Run Test -----------------
-if __name__ == "__main__":
-    IMAGE_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\images"
-    LABEL_DIR = r"C:\Users\prade\OneDrive\Documents\Manav\Pradeep\Synth-RT-DETR-DATASET\test\partial_occlusion\low_contrast\labels"
-    MODEL_ID = "godeep/paligemma2-finetuned_448"  # change to your fine-tuned model
-    IOU_THRESHOLD = 0.5
+# ----------------- Run Evaluation -----------------
 
+if __name__ == "__main__":
     results = evaluate_map(
         image_dir=IMAGE_DIR,
         label_dir=LABEL_DIR,
         model_id=MODEL_ID,
         iou_threshold=IOU_THRESHOLD,
-        visualize=False  # Set True to see images
+        visualize=VISUALIZE,
+        prompt=PROMPT
     )

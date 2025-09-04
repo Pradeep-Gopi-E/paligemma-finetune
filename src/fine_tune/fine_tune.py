@@ -1,7 +1,7 @@
 import re
 import numpy as np
 import torch
-import configs.config as object_detection_config
+import configs.ft_config as object_detection_config
 import os
 
 from torch.utils.data import DataLoader
@@ -158,8 +158,8 @@ if __name__ == "__main__":
     
     push = input("Do you want to push the model to Hugging Face Hub? (yes/no): ").strip().lower()
 if push == "yes":
-    model.push_to_hub("paligemma2-finetuned_448")
-    processor.push_to_hub("paligemma2-finetuned_448")
+    model.push_to_hub("paligemma-finetuned_224")
+    processor.push_to_hub("paligemma-finetuned_224")
     print("[INFO] Model pushed to Hugging Face Hub!")
 else:
     print("[INFO] Model not pushed to hub.")
