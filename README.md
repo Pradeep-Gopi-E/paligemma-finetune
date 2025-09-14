@@ -8,7 +8,11 @@
 A complete pipeline for **fine-tuning Google's Paligemma vision-language model** on custom datasets and running **inference** for object detection tasks with **visualization and evaluation** tools.
 
 ---
+## 📁 Dataset
 
+Download the dataset from [Google Drive](https://drive.google.com/file/d/1-g0J70kxZpyRyWOdiChtJMPnYg5ag2gz/view?usp=drive_link)
+
+---
 ## 📑 Table of Contents
 
 * [Features](#-features)
@@ -163,4 +167,3 @@ This project is licensed under the [MIT License](LICENSE).
 * [Google DeepMind - Paligemma](https://huggingface.co/google/paligemma-3b)
 * [Hugging Face Transformers](https://huggingface.co/transformers/)
 * [PyTorch](https://pytorch.org/)
-* [Dataset] (https://drive.google.com/file/d/1-g0J70kxZpyRyWOdiChtJMPnYg5ag2gz/view?usp=drive_link)
